@@ -6,31 +6,90 @@ document.addEventListener('DOMContentLoaded', () => {
     const musicBtn = document.getElementById('music-btn');
 
     // 1. Cover Open Animation
-    openBtn.addEventListener('click', () => {
-        // Fire Confetti
-        confetti({
-            particleCount: 120,
-            spread: 80,
-            origin: { y: 0.6 },
-            colors: ['#ffffff', '#cba135', '#4a121a']
-        });
-
-        // Slide Down Effect
-        introCover.style.transform = 'translateY(100vh)';
-        introCover.style.opacity = '0';
-
-        // Show Main
-        mainContent.classList.remove('hidden');
-
-        // Play Music
-        bgMusic.play().catch(err => console.log('Autoplay blocked:', err));
-
-        // Hide overlay from DOM after transition
-        setTimeout(() => {
-            introCover.style.display = 'none';
-        }, 1000);
+ // 1. Cover Open Animation
+// 1. Cover Open Animation & Auto Scroll
+// 1. Cover Open Animation & Smooth Slow Auto-Scroll
+// 1. Cover Open Animation & Super Slow Smooth Auto-Scroll to Bottom
+// 1. Cover Open Animation & Interruptible Smooth Scroll
+openBtn.addEventListener('click', () => {
+    // Fire Confetti
+    confetti({
+        particleCount: 120,
+        spread: 80,
+        origin: { y: 0.6 },
+        colors: ['#ffffff', '#cba135', '#4a121a']
     });
 
+    // إظهار المحتوى الأساسي
+    mainContent.classList.remove('hidden');
+
+    // تشغيل الموسيقى
+    bgMusic.play().catch(err => console.log('Autoplay blocked:', err));
+
+    // إخفاء الـ Cover
+    introCover.style.opacity = '0';
+    introCover.style.transition = 'opacity 0.8s ease';
+
+    setTimeout(() => {
+        introCover.style.display = 'none';
+        
+        let isAutoScrolling = true; // متغير عشان نعرف هل السكرول التلقائي شغال ولا لأ
+        let animationFrameId = null;
+
+        // دالة لإيقاف السكرول التلقائي فوراً لو المستخدم تدخل
+        const stopAutoScroll = () => {
+            if (isAutoScrolling) {
+                isAutoScrolling = false;
+                cancelAnimationFrame(animationFrameId);
+                // بنشيل الـ Listeners عشان متفضلش شغالة في الخلفية
+                window.removeEventListener('wheel', stopAutoScroll);
+                window.removeEventListener('touchstart', stopAutoScroll);
+                window.removeEventListener('keydown', stopAutoScroll);
+            }
+        };
+
+        // مراقبة أي تدخل من المستخدم (ماوس، لمس الشاشة، أو كيبورد)
+        window.addEventListener('wheel', stopAutoScroll, { passive: true });
+        window.addEventListener('touchstart', stopAutoScroll, { passive: true });
+        window.addEventListener('keydown', stopAutoScroll, { passive: true });
+
+        // دالة السكرول اللي هتتوقف لو المستخدم لمس حاجة
+        function controlledScroll(targetY, duration) {
+            const startY = window.pageYOffset;
+            const distance = targetY - startY;
+            let startTime = null;
+
+            function animation(currentTime) {
+                if (!isAutoScrolling) return; // لو المستخدم أوقفها، اخرج فوراً
+
+                if (startTime === null) startTime = currentTime;
+                const timeElapsed = currentTime - startTime;
+                const progress = Math.min(timeElapsed / duration, 1);
+                
+                const ease = progress < 0.5 
+                    ? 2 * progress * progress 
+                    : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+
+                window.scrollTo(0, startY + distance * ease);
+
+                if (timeElapsed < duration && isAutoScrolling) {
+                    animationFrameId = requestAnimationFrame(animation);
+                } else {
+                    // لو خلص السكرول لوحده، نشيل الـ Listeners برضه
+                    stopAutoScroll();
+                }
+            }
+
+            animationFrameId = requestAnimationFrame(animation);
+        }
+
+        // حطينا المدة طويلة (مثلاً 20000 أو 25000 زي ما عملتي) 
+        // عشان تنزل ببطء شديد، بس أول ما المستخدم يحרק الماوس أو يلمس الشاشة هتوقف فوراً وتسيب له التحكم!
+        const targetY = document.documentElement.scrollHeight - window.innerHeight;
+        controlledScroll(targetY, 25000); 
+
+    }, 400);
+});
     // 2. Swiper Initialization (3D Coverflow)
     if (typeof Swiper !== 'undefined') {
         new Swiper('.mySwiper', {
@@ -130,3 +189,5 @@ container.addEventListener('mouseleave', () => slideInterval = setInterval(nextS
 
 // Initialization
 updateGallery(currentIndex);
+
+
